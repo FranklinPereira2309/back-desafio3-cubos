@@ -2,10 +2,10 @@ const conexao = require('../bancoDeDados/conexao');
 const bcrypt = require('bcrypt');
 const yup = require('yup');
 const { setLocale } = require('yup')
-const { pt } = require('yup-locales');
+const { pt, da } = require('yup-locales');
 
 
-const cadastrarUsuario = async (req, res) => {
+const cadastrarLogin = async (req, res) => {
     const { nome, email, senha } = req.body;
 
     try {
@@ -38,30 +38,53 @@ const cadastrarUsuario = async (req, res) => {
 
         const { senha: senhaUsuario, ...dadosUsuario } = usuario[0];
 
-
         return res.status(201).json(dadosUsuario);
 
 
     } catch (error) {
-        return res.status(500).json(error.message);
+        return res.status(500).json({ mensagem: `${erro.message}` });
     }
 }
 
-const consultarUsuario = async (req, res) => {
+const consultarLogin = async (req, res) => {
     const { usuario } = req;
-
     try {
 
         if (!usuario) {
             return res.status(401).json({ mensagem: 'O usuário não foi encotrado, você precisa está autenticado!' });
         }
 
-        const { senha, ...usuarioAtual } = rows[0];
+        const { senha, ...usuarioAtual } = usuario;
 
         return res.status(200).json(usuarioAtual);
 
     } catch (error) {
-        return res.status(500).json({ mensagem: 'Ocorreu um erro desconhecido. - ' + error.message });
+        return res.status(500).json({ mensagem: `${error.message}` });
+    }
+
+}
+
+const consultarGeralLogin = async (req, res) => {
+    
+    try {
+
+        const queryUsuarios = `select * from usuarios`;
+        
+        const { rows, rowCount } = await conexao.query(queryUsuarios);
+
+        if(rowCount === 0) {
+            return res.status(404).json({mensagem: 'Usuários não encontrados!'});
+        }
+        
+        const usuariosSemSenha = rows.map(usuario => {
+            const {senha, ... usuario_sem_senha} = usuario;
+            return usuario_sem_senha;
+        })
+        
+        return res.status(200).json(usuariosSemSenha);
+
+    } catch (error) {
+        return res.status(500).json({ mensagem: `${error.message}` });
     }
 
 }
@@ -70,13 +93,15 @@ const atualizarUsuario = async (req, res) => {
     const { nome, email, senha } = req.body;
     const { usuario } = req;
 
-    const erro = verificarBodyUsuario(req.body);
-
-    if (erro) {
-        return res.status(400).json({ mensagem: erro });
-    }
-
     try {
+        setLocale(pt);
+        const schema = yup.object().shape({
+            nome: yup.string(),
+            email: yup.string().email(),
+            senha: yup.string().min(5)
+        });
+
+        await schema.validate(req.body);
 
         if (email !== usuario.email) {
 
@@ -104,10 +129,39 @@ const atualizarUsuario = async (req, res) => {
     }
 }
 
+const deletarUsuario = async (req, res) => {
+    const idUsuario = req.params.id;
+    
+    try {
+        const queryUsuario = `select * from usuarios where id = $1`;
+
+        const { rowCount } = await conexao.query(queryUsuario, [idUsuario]);
+
+        if (rowCount === 0) {
+            return res.status(400).json({ mensagem: 'Usuário não encontrado!'});
+        }
+
+        const excluirUsuario = `delete from usuarios where id = $1`;
+
+        const { rowCount: usuarioExcluido } = await conexao.query(excluirUsuario, [idUsuario]);
+
+        if(usuarioExcluido === 0) {
+            return res.status(404).json({mensagem: 'Não foi possível excluir o Usuário!'});
+        }
+
+        return res.status(201).json({mensagem: 'Usuário Excluído com Sucesso!'});
+
+    } catch (error) {
+        return res.status(500).json({ mensagem: `${error.message}`});
+    }
+}
+
 
 
 module.exports = {
-    cadastrarUsuario,
-    consultarUsuario,
-    atualizarUsuario
+    cadastrarLogin,
+    consultarLogin,
+    consultarGeralLogin,
+    atualizarUsuario,
+    deletarUsuario
 }

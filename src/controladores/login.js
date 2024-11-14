@@ -1,7 +1,7 @@
 const conexao = require('../bancoDeDados/conexao');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const segredo = require('../segredo');
+require('dotenv').config();
 
 const login = async (req, res) => {
     const { email, senha } = req.body;
@@ -27,7 +27,7 @@ const login = async (req, res) => {
         }
 
 
-        const token = jwt.sign({ id: usuarioEncontrado.id }, segredo, { expiresIn: '1h' });
+        const token = jwt.sign({ id: usuarioEncontrado.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         const { senha: senhaUsuario, ...usuario } = usuarioEncontrado
 
@@ -38,7 +38,7 @@ const login = async (req, res) => {
 
 
     } catch (error) {
-        return res.status(500).json({ mensagem: 'Ocorreu um erro desconhecido. - ' + error.message });
+        return res.status(500).json({ mensagem: `${error.message}`});
     }
 }
 

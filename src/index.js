@@ -12,4 +12,7 @@ app.use(rotas);
 
 const PORT = process.env.PORT || 3003;
 
-app.listen(PORT);
+app.listen(PORT, () => {
+    console.log(`Servidor run on port: ${PORT}`);
+    
+});
